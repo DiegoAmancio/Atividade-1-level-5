@@ -25,11 +25,15 @@ const Dashboard: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [editModalOpen, setEditModalOpen] = useState(false);
 
-  useEffect(() => {
-    async function loadFoods(): Promise<void> {
-      // TODO LOAD FOODS
+  async function loadFoods(): Promise<void> {
+    try {
+      const foodsResponse = await api.get<IFoodPlate[]>('/foods');
+      setFoods(foodsResponse.data);
+    } catch (error) {
+      console.log(error);
     }
-
+  }
+  useEffect(() => {
     loadFoods();
   }, []);
 
@@ -37,7 +41,9 @@ const Dashboard: React.FC = () => {
     food: Omit<IFoodPlate, 'id' | 'available'>,
   ): Promise<void> {
     try {
-      // TODO ADD A NEW FOOD PLATE TO THE API
+      const request = await api.post('/foods', { ...food, available: true });
+      setEditingFood({} as IFoodPlate);
+      setFoods(foods.concat([request.data]));
     } catch (err) {
       console.log(err);
     }
@@ -46,11 +52,27 @@ const Dashboard: React.FC = () => {
   async function handleUpdateFood(
     food: Omit<IFoodPlate, 'id' | 'available'>,
   ): Promise<void> {
-    // TODO UPDATE A FOOD PLATE ON THE API
+    const editedFoodData: IFoodPlate = {
+      ...food,
+      id: editingFood.id,
+      available: editingFood.available,
+    };
+
+    await api.put(`/foods/${editingFood.id}`, editedFoodData);
+    setFoods(
+      foods.map((foodInList: IFoodPlate) => {
+        if (foodInList.id === editingFood.id) {
+          // eslint-disable-next-line no-param-reassign
+          foodInList = editedFoodData;
+        }
+        return foodInList;
+      }),
+    );
   }
 
   async function handleDeleteFood(id: number): Promise<void> {
-    // TODO DELETE A FOOD PLATE FROM THE API
+    await api.delete(`/foods/${id}`);
+    setFoods(foods.filter(food => food.id !== id));
   }
 
   function toggleModal(): void {
@@ -62,6 +84,8 @@ const Dashboard: React.FC = () => {
   }
 
   function handleEditFood(food: IFoodPlate): void {
+    setEditingFood(food);
+    toggleEditModal();
     // TODO SET THE CURRENT EDITING FOOD ID IN THE STATE
   }
 
